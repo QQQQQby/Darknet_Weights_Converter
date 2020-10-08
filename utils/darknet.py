@@ -25,15 +25,42 @@ def extract_weights(path, blocks):
     with open(path, "rb") as f:
         header = np.fromfile(f, np.int32, 5)
         weights = np.fromfile(f, dtype=np.float32)
+    ptr = 0
+    in_channels = 3
     conv_id = 1
+    bn_id = 1
     for block_id, block in enumerate(blocks):
         if block["type"] == "convolutional":
+            out_channels = int(block["filters"])
             if int(block.get("batch_normalize", "0")) == 1:
-                pass
-        elif block["type"] == "":
-            pass
+                bn_biases = weights[ptr: ptr + out_channels].copy()
+                ptr += out_channels
+                bn_weights = weights[ptr: ptr + out_channels].copy()
+                ptr += out_channels
+                bn_running_mean = weights[ptr: ptr + out_channels].copy()
+                ptr += out_channels
+                bn_running_var = weights[ptr: ptr + out_channels].copy()
+                ptr += out_channels
+            else:
+                conv_biases = weights[ptr: ptr + out_channels].copy()
+                ptr += out_channels
+            kernel_size = int(block["size"])
+            num_weights = out_channels * in_channels * kernel_size * kernel_size
+
+            conv_weights = weights[ptr: ptr + num_weights].copy()
+            ptr += num_weights
+
+            in_channels = out_channels
+
+        elif block["type"] == "route":
+            layers = [int(layer.strip()) for layer in block["layers"].split(",")]
+            layers = [block_id + layer if layer < 0 else layer for layer in layers]
+            # blocks[block_id + int(block["layers"])]
+    print()
 
 
 if __name__ == '__main__':
     blocks = read_cfg("../cfg/yolov3.cfg")
     extract_weights("../weights/yolov3.weights", blocks)
+    # blocks = read_cfg("../cfg/yolo-fastest.cfg")
+    # extract_weights("../weights/yolo-fastest.weights", blocks)
