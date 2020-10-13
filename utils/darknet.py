@@ -32,6 +32,7 @@ def extract_weights(path, blocks):
     out_channels_list = [3]
     for block_id, block in enumerate(blocks):
         if block["type"] == "convolutional":
+            print(block_id, end=" ")
             out_channels = int(block["filters"])
             in_channels = out_channels_list[-1]
             if int(block.get("batch_normalize", "0")) == 1:
@@ -43,11 +44,15 @@ def extract_weights(path, blocks):
                 ptr += out_channels
                 bn_running_var = weights[ptr: ptr + out_channels].copy()
                 ptr += out_channels
+                # print("bn", out_channels)
             else:
                 conv_biases = weights[ptr: ptr + out_channels].copy()
                 ptr += out_channels
+                # print("bias", out_channels)
             kernel_size = int(block["size"])
             num_weights = out_channels * in_channels * kernel_size * kernel_size
+
+            print([out_channels, in_channels, kernel_size, kernel_size], ptr)
 
             conv_weights = weights[ptr: ptr + num_weights].copy()
             ptr += num_weights
@@ -58,6 +63,8 @@ def extract_weights(path, blocks):
             layers = [int(layer.strip()) for layer in block["layers"].split(",")]
             out_channels = 0
             for layer in layers:
+                if layer >= 0:
+                    layer += 2
                 out_channels += out_channels_list[layer]
             out_channels_list.append(out_channels)
         else:
@@ -71,5 +78,10 @@ def extract_weights(path, blocks):
 if __name__ == '__main__':
     blocks = read_cfg("../cfg/yolov3.cfg")
     extract_weights("../weights/yolov3.weights", blocks)
+    # blocks = read_cfg("../cfg/yolov3-tiny.cfg")
+    # extract_weights("../weights/yolov3-tiny.weights", blocks)
+    # blocks = read_cfg("../cfg/yolov3-spp.cfg")
+    # extract_weights("../weights/yolov3-spp.weights", blocks)
+
     # blocks = read_cfg("../cfg/yolo-fastest.cfg")
     # extract_weights("../weights/yolo-fastest.weights", blocks)
