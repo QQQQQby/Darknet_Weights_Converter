@@ -25,13 +25,15 @@ def extract_weights(path, blocks):
     with open(path, "rb") as f:
         header = np.fromfile(f, np.int32, 5)
         weights = np.fromfile(f, dtype=np.float32)
+    weights_length = weights.shape[0]
     ptr = 0
-    in_channels = 3
     conv_id = 1
     bn_id = 1
+    out_channels_list = [3]
     for block_id, block in enumerate(blocks):
         if block["type"] == "convolutional":
             out_channels = int(block["filters"])
+            in_channels = out_channels_list[-1]
             if int(block.get("batch_normalize", "0")) == 1:
                 bn_biases = weights[ptr: ptr + out_channels].copy()
                 ptr += out_channels
@@ -50,13 +52,20 @@ def extract_weights(path, blocks):
             conv_weights = weights[ptr: ptr + num_weights].copy()
             ptr += num_weights
 
-            in_channels = out_channels
+            out_channels_list.append(out_channels)
 
         elif block["type"] == "route":
             layers = [int(layer.strip()) for layer in block["layers"].split(",")]
-            layers = [block_id + layer if layer < 0 else layer for layer in layers]
-            # blocks[block_id + int(block["layers"])]
-    print()
+            out_channels = 0
+            for layer in layers:
+                out_channels += out_channels_list[layer]
+            out_channels_list.append(out_channels)
+        else:
+            out_channels_list.append(out_channels_list[-1])
+
+    print(ptr, weights_length)
+    print(ptr - weights_length)
+    assert ptr == weights_length
 
 
 if __name__ == '__main__':
